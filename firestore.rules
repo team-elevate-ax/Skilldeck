@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /profiles/{document=**} {
+      // Anyone can read public profiles
+      allow read: if resource.data.isPublic == true;
+      
+      // Users can read their own profile (even if private)
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Only authenticated users can create profiles, and must assign them to themselves
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Only the owner can update their profile
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // Delete is not allowed in MVP, but if needed:
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+  }
+}
