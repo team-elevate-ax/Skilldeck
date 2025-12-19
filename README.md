@@ -61,6 +61,21 @@ SkillDeck utilizes a hierarchical Firestore structure for granular access contro
    npm run dev
    ```
 
+## 🚀 Deployment (Vercel)
+
+1. **Push to GitHub**: Ensure your latest changes are pushed to a GitHub repository.
+2. **Import to Vercel**: Login to [Vercel](https://vercel.com/) and import your repository.
+3. **Environment Variables**: Add the following keys in Vercel project settings:
+   - `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+   - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+   - `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`
+4. **Firebase Configuration**: Add your Vercel deployment URL (e.g., `your-project.vercel.app`) to your Firebase project's "Authorized Domains" in the Authentication settings.
+
 ## 📄 License
 
 This project is licensed under the MIT License.

@@ -35,6 +35,7 @@ export default function MyProfilePage() {
     const router = useRouter();
     const [profileData, setProfileData] = useState<{ profile: Profile, skills: Skill[], proofs: ProofOfWork[] } | null>(null);
     const [fetching, setFetching] = useState(true);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -60,6 +61,25 @@ export default function MyProfilePage() {
             loadProfile();
         }
     }, [user]);
+
+    const handleCopy = () => {
+        if (!profileData) return; // Ensure profileData is available
+        const url = typeof window !== 'undefined' ? `${window.location.origin}/profile/${profileData.profile.username}` : `/profile/${profileData.profile.username}`;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }).catch(() => {
+                copyToClipboardFallback(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            });
+        } else {
+            copyToClipboardFallback(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     if (loading || (fetching && user)) {
         return (
@@ -126,21 +146,13 @@ export default function MyProfilePage() {
                         </svg>
                         <span className="flex-grow text-sm text-gray-600 truncate">{typeof window !== 'undefined' ? `${window.location.origin}/profile/${profile.username}` : `/profile/${profile.username}`}</span>
                         <button
-                            onClick={() => {
-                                const url = typeof window !== 'undefined' ? `${window.location.origin}/profile/${profile.username}` : `/profile/${profile.username}`;
-                                if (navigator.clipboard) {
-                                    navigator.clipboard.writeText(url).then(() => {
-                                        alert('URL copied to clipboard!');
-                                    }).catch(() => {
-                                        copyToClipboardFallback(url);
-                                    });
-                                } else {
-                                    copyToClipboardFallback(url);
-                                }
-                            }}
-                            className="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-medium text-blue-600 hover:bg-gray-50 uppercase tracking-wide"
+                            onClick={handleCopy}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition-all duration-200 uppercase tracking-wide border ${copied
+                                ? 'bg-green-50 border-green-200 text-green-600'
+                                : 'bg-white border-gray-300 text-blue-600 hover:bg-gray-50'
+                                }`}
                         >
-                            Copy
+                            {copied ? 'Copied!' : 'Copy'}
                         </button>
                     </div>
                     <p className="mt-2 text-xs text-gray-500 italic">This section is only visible to you.</p>

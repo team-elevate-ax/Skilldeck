@@ -44,8 +44,6 @@ export default function SignupPage() {
                 username: formData.username,
                 headline: '',
                 bio: '',
-                skills: [],
-                proofOfWork: [],
                 isPublic: false
             });
 
