@@ -1,22 +1,26 @@
 'use client';
 
-import { useAuth } from '@/lib/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getProfileByUserId } from '@/lib/profiles';
+import { useAuth } from '@/lib/AuthContext';
+import { getProfileByUsername } from '@/lib/profiles';
 import { Profile, Skill, ProofOfWork } from '@/types';
 
 // Fallback for non-secure contexts (http via IP) where navigator.clipboard is unavailable
 function copyToClipboardFallback(text: string) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
+
+    // Ensure the textarea is off-screen
     textArea.style.position = "fixed";
     textArea.style.left = "-9999px";
     textArea.style.top = "0";
     document.body.appendChild(textArea);
+
     textArea.focus();
     textArea.select();
+
     try {
         const successful = document.execCommand('copy');
         if (successful) {
@@ -27,59 +31,53 @@ function copyToClipboardFallback(text: string) {
     } catch (err) {
         alert('Unable to copy. Please copy manually: ' + text);
     }
+
     document.body.removeChild(textArea);
 }
 
-export default function MyProfilePage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
+export default function ProfilePage() {
+    const params = useParams();
+    // params.id is actually the username based on folder structure [id]
+    // but semantically we treat it as username if our routing links there.
+    const usernameParam = params.id as string;
+
+    const { user } = useAuth();
     const [profileData, setProfileData] = useState<{ profile: Profile, skills: Skill[], proofs: ProofOfWork[] } | null>(null);
-    const [fetching, setFetching] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        if (!loading && !user) {
-            router.push('/login');
-        }
-    }, [user, loading, router]);
-
-    useEffect(() => {
-        async function loadProfile() {
-            if (user?.uid) {
-                try {
-                    const data = await getProfileByUserId(user.uid);
+        async function fetchProfile() {
+            if (!usernameParam) return;
+            try {
+                // Decode URI component in case of special chars, though usernames usually simple
+                const data = await getProfileByUsername(decodeURIComponent(usernameParam), user?.uid);
+                if (data) {
                     setProfileData(data);
-                } catch (error) {
-                    console.error('Error fetching profile:', error);
-                } finally {
-                    setFetching(false);
+                } else {
+                    setError('Profile not found');
                 }
+            } catch (err) {
+                console.error("Error fetching profile:", err);
+                setError('Failed to load profile');
+            } finally {
+                setLoading(false);
             }
         }
 
-        if (user) {
-            loadProfile();
-        }
-    }, [user]);
+        fetchProfile();
+    }, [usernameParam, user]);
 
-    if (loading || (fetching && user)) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-gray-500">Loading profile...</div>
-            </div>
-        );
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading profile...</div>;
     }
 
-    if (!user) return null;
-
-    if (!profileData) {
+    if (error || !profileData) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Profile not found</h1>
-                    <p className="text-gray-600 mb-6">You haven't set up your profile yet.</p>
-                    <Link href="/profile/setup" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
-                        Setup Profile
-                    </Link>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{error || 'Profile not found'}</h1>
+                    <p className="text-gray-600">The user you are looking for might not exist or verify the URL.</p>
                 </div>
             </div>
         );
@@ -103,47 +101,9 @@ export default function MyProfilePage() {
                         <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">{profile.fullName}</h1>
-                    <p className="text-lg text-gray-600 font-medium mb-6">
+                    <p className="text-lg text-gray-600 font-medium">
                         {profile.headline}
                     </p>
-
-                    <Link
-                        href="/profile/setup"
-                        className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                        </svg>
-                        Edit Profile
-                    </Link>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-                    <h2 className="text-sm font-semibold text-gray-900 mb-2">Public Profile URL</h2>
-                    <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-md border border-gray-200">
-                        <svg className="w-5 h-5 text-gray-400 ml-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                        </svg>
-                        <span className="flex-grow text-sm text-gray-600 truncate">{typeof window !== 'undefined' ? `${window.location.origin}/profile/${profile.username}` : `/profile/${profile.username}`}</span>
-                        <button
-                            onClick={() => {
-                                const url = typeof window !== 'undefined' ? `${window.location.origin}/profile/${profile.username}` : `/profile/${profile.username}`;
-                                if (navigator.clipboard) {
-                                    navigator.clipboard.writeText(url).then(() => {
-                                        alert('URL copied to clipboard!');
-                                    }).catch(() => {
-                                        copyToClipboardFallback(url);
-                                    });
-                                } else {
-                                    copyToClipboardFallback(url);
-                                }
-                            }}
-                            className="px-3 py-1 bg-white border border-gray-300 rounded text-xs font-medium text-blue-600 hover:bg-gray-50 uppercase tracking-wide"
-                        >
-                            Copy
-                        </button>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-500 italic">This section is only visible to you.</p>
                 </div>
 
                 {/* About Me */}

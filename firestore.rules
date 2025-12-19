@@ -2,21 +2,40 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /profiles/{document=**} {
-      // Anyone can read public profiles
-      allow read: if resource.data.isPublic == true;
-      
-      // Users can read their own profile (even if private)
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /profiles/{profileId} {
+      // Helper to check ownership based on the profile document
+      function isOwner(data) {
+        return request.auth != null && data.userId == request.auth.uid;
+      }
 
-      // Only authenticated users can create profiles, and must assign them to themselves
+      // 1. Profile Rules
+      // Anyone can read public profiles; Owners can read their own
+      allow read: if resource.data.isPublic == true || isOwner(resource.data);
+      
+      // Create: Must be authenticated and assign to self
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-
-      // Only the owner can update their profile
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
       
-      // Delete is not allowed in MVP, but if needed:
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Update/Delete: Only the owner
+      allow update, delete: if isOwner(resource.data);
+      
+      // 2. Subcollections: Skills
+      match /skills/{skillId} {
+        // Read: Inherit public access from parent profile OR owner access
+        allow read: if get(/databases/$(database)/documents/profiles/$(profileId)).data.isPublic == true 
+                    || isOwner(get(/databases/$(database)/documents/profiles/$(profileId)).data);
+                    
+        // Write: Only the owner of the parent profile can modify skills
+        allow write: if isOwner(get(/databases/$(database)/documents/profiles/$(profileId)).data);
+      }
+
+      // 3. Subcollections: Proofs
+      match /proofs/{proofId} {
+        // Same logic as skills
+        allow read: if get(/databases/$(database)/documents/profiles/$(profileId)).data.isPublic == true 
+                    || isOwner(get(/databases/$(database)/documents/profiles/$(profileId)).data);
+                    
+        allow write: if isOwner(get(/databases/$(database)/documents/profiles/$(profileId)).data);
+      }
     }
   }
 }
