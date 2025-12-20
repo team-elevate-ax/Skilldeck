@@ -45,4 +45,13 @@ test-*.js
 init-db.js
 scripts/
 
+# internal notes
 prd_content.txt
+FRONTEND_NOTES.txt
+FRONTEND_NOTES.md
+
+# ides
+.vscode/
+.idea/
+*.swp
+*.swo
